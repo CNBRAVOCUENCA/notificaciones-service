@@ -1,7 +1,8 @@
 """Fixtures compartidos para los tests del microservicio de Notificaciones."""
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 
 class FakeDB:

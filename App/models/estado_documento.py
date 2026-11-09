@@ -1,7 +1,6 @@
 """Modelo de dominio para el estado de un documento en el flujo."""
 
-from datetime import datetime, timezone
-from typing import List
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, Field
 
@@ -10,7 +9,7 @@ ESTADOS_VALIDOS = ["subido", "extraido", "resumido", "notificado", "error"]
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class EventoEstado(BaseModel):
@@ -24,5 +23,5 @@ class EstadoDocumento(BaseModel):
     """Estado actual de un documento y su historial de eventos."""
     document_id: int
     estado_actual: str
-    historial: List[EventoEstado] = Field(default_factory=list)
+    historial: list[EventoEstado] = Field(default_factory=list)
     updated_at: datetime = Field(default_factory=_utc_now)

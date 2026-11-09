@@ -20,17 +20,8 @@ class EstadoService:
                 f"Estado '{estado}' inválido. Válidos: {', '.join(ESTADOS_VALIDOS)}"
             )
 
-        actual = self.repository.get_by_document_id(document_id)
         evento = EventoEstado(estado=estado, detalle=detalle)
-
-        if actual is None:
-            actual = EstadoDocumento(document_id=document_id, estado_actual=estado, historial=[evento])
-        else:
-            actual.estado_actual = estado
-            actual.historial.append(evento)
-            actual.updated_at = evento.timestamp
-
-        return self.repository.upsert(actual)
+        return self.repository.registrar_evento(document_id, evento)
 
     def obtener_estado(self, document_id: int) -> EstadoDocumento:
         estado = self.repository.get_by_document_id(document_id)

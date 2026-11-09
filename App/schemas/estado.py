@@ -1,7 +1,6 @@
 """Schemas (DTOs) de la API de Notificaciones / Estado."""
 
 from datetime import datetime
-from typing import List
 
 from pydantic import BaseModel
 
@@ -21,5 +20,5 @@ class EventoResponse(BaseModel):
 class EstadoResponse(BaseModel):
     document_id: int
     estado_actual: str
-    historial: List[EventoResponse]
+    historial: list[EventoResponse]
     updated_at: datetime

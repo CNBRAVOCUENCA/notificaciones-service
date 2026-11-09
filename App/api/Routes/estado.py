@@ -1,7 +1,5 @@
 """Rutas REST del microservicio de Notificaciones / Estado."""
 
-from typing import List
-
 from fastapi import APIRouter, Depends
 from pymongo.database import Database
 
@@ -18,7 +16,9 @@ def _get_service(db: Database = Depends(get_db)) -> EstadoService:
 
 
 @router.post("", response_model=EstadoResponse)
-async def actualizar_estado(payload: ActualizarEstadoRequest, service: EstadoService = Depends(_get_service)) -> EstadoResponse:
+async def actualizar_estado(
+    payload: ActualizarEstadoRequest, service: EstadoService = Depends(_get_service)
+) -> EstadoResponse:
     """Registra un nuevo estado para un documento (subido/extraido/resumido/...)."""
     estado = service.actualizar_estado(payload.document_id, payload.estado, payload.detalle)
     return EstadoResponse(**estado.model_dump())
@@ -31,7 +31,9 @@ async def obtener_estado(document_id: int, service: EstadoService = Depends(_get
     return EstadoResponse(**estado.model_dump())
 
 
-@router.get("", response_model=List[EstadoResponse])
-async def listar_estados(skip: int = 0, limit: int = 50, service: EstadoService = Depends(_get_service)) -> List[EstadoResponse]:
+@router.get("", response_model=list[EstadoResponse])
+async def listar_estados(
+    skip: int = 0, limit: int = 50, service: EstadoService = Depends(_get_service)
+) -> list[EstadoResponse]:
     """Lista los estados de todos los documentos (paginado)."""
     return [EstadoResponse(**e.model_dump()) for e in service.listar(skip, limit)]
