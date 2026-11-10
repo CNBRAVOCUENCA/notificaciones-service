@@ -48,6 +48,12 @@ rechaza con HTTP 400.
 Copiar `.env.example` a `.env`. Para desarrollo sin Mongo real:
 `DATABASE_URL=mongomock://localhost`.
 
+### Usuario de ejecución en Docker
+
+La imagen ejecuta Uvicorn como el usuario y grupo sin privilegios `app`. El
+servicio no necesita escribir en `/app` ni en otros directorios locales; los
+logs se envían a stdout y la persistencia se realiza en MongoDB.
+
 ### Consul y Traefik
 
 El registro en Consul es opcional: con `CONSUL_HTTP_ADDR` vacío (valor
