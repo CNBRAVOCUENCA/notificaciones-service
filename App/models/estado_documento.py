@@ -4,8 +4,14 @@ from datetime import UTC, datetime
 
 from pydantic import BaseModel, Field
 
-# Estados válidos del flujo, en orden
-ESTADOS_VALIDOS = ["subido", "extraido", "resumido", "notificado", "error"]
+ESTADOS_VALIDOS = ("subido", "extraido", "resumido", "notificado", "error")
+TRANSICIONES_PERMITIDAS = {
+    "subido": {"extraido", "error"},
+    "extraido": {"resumido", "error"},
+    "resumido": {"notificado", "error"},
+    "notificado": {"error"},
+    "error": {"subido"},
+}
 
 
 def _utc_now() -> datetime:
@@ -14,6 +20,7 @@ def _utc_now() -> datetime:
 
 class EventoEstado(BaseModel):
     """Un cambio de estado puntual, con su marca de tiempo."""
+
     estado: str
     timestamp: datetime = Field(default_factory=_utc_now)
     detalle: str = ""
@@ -21,6 +28,7 @@ class EventoEstado(BaseModel):
 
 class EstadoDocumento(BaseModel):
     """Estado actual de un documento y su historial de eventos."""
+
     document_id: int
     estado_actual: str
     historial: list[EventoEstado] = Field(default_factory=list)

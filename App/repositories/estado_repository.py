@@ -3,6 +3,7 @@
 from typing import Any
 
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 from App.models.estado_documento import EstadoDocumento, EventoEstado
 
@@ -15,24 +16,32 @@ class EstadoRepository:
         payload = self.collection.find_one({"document_id": document_id})
         return self._deserialize(payload)
 
-    def registrar_evento(self, document_id: int, evento: EventoEstado) -> EstadoDocumento:
-        """Agrega un evento al historial y lo marca como estado actual.
-
-        Es una sola operación atómica en MongoDB ($push + $set con upsert): no
-        lee antes de escribir, así que dos notificaciones simultáneas del mismo
-        documento no se pisan y no se pierde ningún evento del historial.
-        """
+    def registrar_evento_si_estado_actual(
+        self, document_id: int, evento: EventoEstado, estado_esperado: str | None
+    ) -> EstadoDocumento | None:
+        """Agrega el evento solo si el estado aún coincide con el leído por el servicio."""
         evento_json = evento.model_dump(mode="json")
-        payload = self.collection.find_one_and_update(
-            {"document_id": document_id},
-            {
-                "$set": {"estado_actual": evento.estado, "updated_at": evento_json["timestamp"]},
-                "$push": {"historial": evento_json},
-                "$setOnInsert": {"document_id": document_id},
-            },
-            upsert=True,
-            return_document=ReturnDocument.AFTER,
-        )
+        filtro: dict = {"document_id": document_id}
+        upsert = estado_esperado is None
+        if upsert:
+            filtro["estado_actual"] = {"$exists": False}
+        else:
+            filtro["estado_actual"] = estado_esperado
+
+        try:
+            payload = self.collection.find_one_and_update(
+                filtro,
+                {
+                    "$set": {"estado_actual": evento.estado, "updated_at": evento_json["timestamp"]},
+                    "$push": {"historial": evento_json},
+                    "$setOnInsert": {"document_id": document_id},
+                },
+                upsert=upsert,
+                return_document=ReturnDocument.AFTER,
+            )
+        except DuplicateKeyError:
+            # Otra réplica creó el estado inicial mientras esta solicitud intentaba insertarlo.
+            return None
         return self._deserialize(payload)
 
     def get_all(self, skip: int = 0, limit: int = 50) -> list[EstadoDocumento]:
