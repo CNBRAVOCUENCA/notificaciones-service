@@ -56,7 +56,7 @@ def test_registration_payload_and_auth(monkeypatch):
             "http": "http://172.20.0.4:8123/health",
             "interval": "10s",
             "timeout": "2s",
-            "deregister_critical_service_after": "1m",
+            "DeregisterCriticalServiceAfter": "1m",
         },
     }
 

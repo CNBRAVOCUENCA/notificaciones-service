@@ -68,7 +68,7 @@ class ConsulServiceRegistration:
                         "http": _health_url(address, self._config.consul_service_port),
                         "interval": "10s",
                         "timeout": "2s",
-                        "deregister_critical_service_after": "1m",
+                        "DeregisterCriticalServiceAfter": "1m",
                     },
                 },
             )
