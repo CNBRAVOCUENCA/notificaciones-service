@@ -3,10 +3,17 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from App.exceptions import DocumentoNoEncontradoError, EstadoInvalidoError
+from App.exceptions import (
+    ConflictoEstadoError,
+    DocumentoNoEncontradoError,
+    EstadoInvalidoError,
+    TransicionEstadoInvalidaError,
+)
 
 _STATUS_MAP = {
     EstadoInvalidoError: 400,
+    TransicionEstadoInvalidaError: 409,
+    ConflictoEstadoError: 409,
     DocumentoNoEncontradoError: 404,
 }
 
@@ -19,4 +26,5 @@ def register_exception_handlers(app: FastAPI) -> None:
 def _make_handler(status_code: int):
     async def handler(request: Request, exc: Exception) -> JSONResponse:
         return JSONResponse(status_code=status_code, content={"detail": str(exc)})
+
     return handler

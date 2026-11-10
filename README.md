@@ -25,7 +25,12 @@ test/                              # 9 tests (unitarios + integración)
 ## Estados del flujo
 
 `subido`, `extraido`, `resumido`, `notificado`, `error`. Cualquier otro valor se
-rechaza con HTTP 400.
+rechaza con HTTP 400. La primera actualización debe ser `subido`; la progresión
+normal es `subido → extraido → resumido → notificado`. Se puede registrar
+`error` desde cualquier etapa, y un documento en `error` puede reiniciar el
+flujo con `subido` para permitir reintentos. Repetir el estado actual es
+idempotente y no agrega entradas al historial. Las transiciones fuera de orden
+se rechazan sin modificar el estado ni el historial.
 
 ## Endpoints
 
@@ -41,6 +46,7 @@ rechaza con HTTP 400.
 | Situación | HTTP |
 |---|---|
 | Estado no válido | 400 |
+| Transición fuera de orden o conflicto concurrente | 409 |
 | Documento sin registro de estado | 404 |
 
 ## Configuración
