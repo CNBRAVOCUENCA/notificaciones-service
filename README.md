@@ -48,6 +48,24 @@ rechaza con HTTP 400.
 Copiar `.env.example` a `.env`. Para desarrollo sin Mongo real:
 `DATABASE_URL=mongomock://localhost`.
 
+### Consul y Traefik
+
+El registro en Consul es opcional: con `CONSUL_HTTP_ADDR` vacío (valor
+predeterminado) el servicio funciona sin descubrimiento. Para el despliegue,
+configurar la dirección HTTP del agente, por ejemplo
+`CONSUL_HTTP_ADDR=http://consul:8500`. El servicio se registra al iniciar y se
+da de baja al apagar; Consul consulta `GET /health` cada 10 segundos y elimina
+el registro si permanece crítico durante un minuto. Si el registro configurado
+falla, la aplicación no inicia.
+
+`CONSUL_HTTP_TOKEN` es opcional y se envía al agente como token HTTP, nunca se
+incluye en los logs. `CONSUL_SERVICE_NAME` toma `APP_NAME` por defecto,
+`CONSUL_SERVICE_PORT` es 8000 y `CONSUL_SERVICE_TAGS` acepta etiquetas
+separadas por comas (por ejemplo `traefik.enable=true,traefik.http.routers.notificaciones.rule=PathPrefix(/api/v1)`).
+`CONSUL_SERVICE_ADDRESS` permite definir la IP anunciada; si se omite, se
+determina la IP de red de esta instancia hacia el agente, para que las
+instancias replicadas se registren por separado y Traefik pueda alcanzarlas.
+
 ## Correr los tests
 
 Con **uv** (recomendado, más rápido y con `uv.lock` para versiones reproducibles):
