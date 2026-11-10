@@ -9,6 +9,7 @@ from App.logging_config import configurar_logging
 from App.api import estado_router
 from App.api.exception_handlers import register_exception_handlers
 from App.config.settings import settings
+from App.telemetry import install_telemetry
 from App.utils.database import ensure_indexes
 
 
@@ -35,6 +36,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+install_telemetry(app, settings.app_name)
 register_exception_handlers(app)
 app.include_router(estado_router, prefix=settings.api_v1_prefix)
 
