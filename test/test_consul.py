@@ -15,9 +15,21 @@ def make_settings(**overrides) -> Settings:
     return Settings(_env_file=None, **overrides)
 
 
+def _registrar_pedido(requests):
+    """Guarda los pedidos de alta y baja; la consulta de registros viejos responde vacía."""
+
+    def handler(request):
+        if request.method == "GET" and request.url.path == "/v1/agent/services":
+            return httpx.Response(200, json={})
+        requests.append(request)
+        return httpx.Response(200)
+
+    return handler
+
+
 def test_registration_payload_and_auth(monkeypatch):
     requests = []
-    transport = httpx.MockTransport(lambda request: (requests.append(request), httpx.Response(200))[1])
+    transport = httpx.MockTransport(_registrar_pedido(requests))
     config = make_settings(
         consul_http_addr="http://consul:8500",
         consul_http_token="secret-token",
@@ -62,7 +74,7 @@ def test_registration_payload_and_auth(monkeypatch):
 
 def test_registration_uses_name_default_and_deregisters(monkeypatch):
     requests = []
-    transport = httpx.MockTransport(lambda request: (requests.append(request), httpx.Response(200))[1])
+    transport = httpx.MockTransport(_registrar_pedido(requests))
     config = make_settings(consul_http_addr="http://consul:8500", app_name="app")
     monkeypatch.setattr("App.services.consul.socket.gethostname", lambda: "runtime-host")
     monkeypatch.setattr("App.services.consul._service_address", lambda _addr: "10.0.0.5")
@@ -151,3 +163,60 @@ def test_fastapi_lifespan_registers_then_deregisters(monkeypatch):
         registration.stop.assert_awaited_once()
 
     asyncio.run(run_lifecycle())
+
+
+def test_al_registrar_da_de_baja_registros_viejos_con_la_misma_ip(monkeypatch):
+    """Docker reutiliza IP: un registro viejo con la misma IP:puerto se borra antes del alta."""
+    pedidos = []
+
+    def handler(request):
+        pedidos.append((request.method, request.url.path))
+        if request.url.path == "/v1/agent/services":
+            return httpx.Response(
+                200,
+                json={
+                    "viejo-del-mismo-servicio": {"Address": "10.0.0.5", "Port": 8000},
+                    "otro-servicio-misma-ip": {"Address": "10.0.0.5", "Port": 8000},
+                    "otra-instancia-valida": {"Address": "10.0.0.9", "Port": 8000},
+                    "notificaciones-host": {"Address": "10.0.0.5", "Port": 8000},
+                },
+            )
+        return httpx.Response(200)
+
+    config = make_settings(consul_http_addr="http://consul:8500", consul_service_name="notificaciones")
+    monkeypatch.setattr("App.services.consul.socket.gethostname", lambda: "host")
+    monkeypatch.setattr("App.services.consul._service_address", lambda _addr: "10.0.0.5")
+    original_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        "App.services.consul.httpx.AsyncClient",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(handler), **kwargs),
+    )
+    registration = ConsulServiceRegistration(config)
+    asyncio.run(registration.start())
+
+    bajas = [path for method, path in pedidos if "deregister" in path]
+    assert bajas == [
+        "/v1/agent/service/deregister/viejo-del-mismo-servicio",
+        "/v1/agent/service/deregister/otro-servicio-misma-ip",
+    ]
+    assert pedidos[-1] == ("PUT", "/v1/agent/service/register")
+
+
+def test_si_consul_falla_al_limpiar_igual_se_registra(monkeypatch):
+    pedidos = []
+
+    def handler(request):
+        pedidos.append(request.url.path)
+        if request.url.path == "/v1/agent/services":
+            return httpx.Response(500)
+        return httpx.Response(200)
+
+    config = make_settings(consul_http_addr="http://consul:8500")
+    monkeypatch.setattr("App.services.consul._service_address", lambda _addr: "10.0.0.5")
+    original_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        "App.services.consul.httpx.AsyncClient",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(handler), **kwargs),
+    )
+    asyncio.run(ConsulServiceRegistration(config).start())
+    assert pedidos[-1] == "/v1/agent/service/register"
