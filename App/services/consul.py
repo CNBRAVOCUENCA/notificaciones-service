@@ -1,5 +1,6 @@
 """Registro de instancias del servicio en el agente local de Consul."""
 
+import contextlib
 import logging
 import socket
 
@@ -76,10 +77,8 @@ class ConsulServiceRegistration:
             self._service_id = service_id
         except Exception as exc:
             if self._client is not None:
-                try:
+                with contextlib.suppress(Exception):
                     await self._client.aclose()
-                except Exception:
-                    pass
                 self._client = None
             logger.error("Consul service registration failed (%s)", type(exc).__name__)
             raise RuntimeError("Consul service registration failed") from None
