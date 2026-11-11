@@ -6,10 +6,9 @@ from unittest.mock import AsyncMock
 
 import httpx
 import pytest
-from fastapi import FastAPI
-
 from App.config.settings import Settings
 from App.services.consul import ConsulServiceRegistration
+from fastapi import FastAPI
 
 
 def make_settings(**overrides) -> Settings:
